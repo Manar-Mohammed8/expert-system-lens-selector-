@@ -1,0 +1,121 @@
+# -*- coding: utf-8 -*-
+"""
+نظام خبير ذكي لاختيار العدسات المناسبة
+Rule-Based Expert System for Colored Lens Recommendation
+
+المدخلات : لون البشرة، لون الشعر، نوع المناسبة
+المخرجات : 3 توصيات مرتبة (الأفضل / مناسب / جريء) مع سبب كل اختيار
+المنهجية : قواعد شرطية (If / Elif / Else) مبنية على معرفة خبراء التجميل والموضة
+"""
+
+from dataclasses import dataclass
+from typing import List, Sequence
+
+# ─────────────────────────── قاعدة المعرفة: القيم المسموحة ───────────────────────────
+SKIN_TONES: Sequence[str] = ("فاتحة", "حنطية", "داكنة")
+HAIR_COLORS: Sequence[str] = ("أسود", "بني", "أشقر")
+OCCASIONS: Sequence[str] = ("حفلة", "عمل", "يومي")
+
+
+@dataclass(frozen=True)
+class Suggestion:
+    """توصية واحدة: الترتيب + نوع العدسة + سبب الاختيار."""
+    rank: str
+    lens: str
+    reason: str
+
+
+# ─────────────────────────────── مرحلة الإدخال ───────────────────────────────
+def _normalize(text: str) -> str:
+    """توحيد الكتابة لتقبّل الاختلافات الشائعة (أ/ا، ة/ه)."""
+    table = str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ة": "ه"})
+    return text.strip().translate(table)
+
+
+def get_input(prompt: str, options: Sequence[str]) -> str:
+    """
+    يستقبل إدخال المستخدمة ويتحقق أنه ضمن الخيارات المتاحة.
+    يعيد الطلب حتى تُدخل قيمة صحيحة، ويرجع القيمة بصيغتها المعتمدة.
+    """
+    lookup = {_normalize(option): option for option in options}
+    choices = "، ".join(options)
+
+    while True:
+        answer = _normalize(input(f"{prompt} ({choices}): "))
+        if answer in lookup:
+            return lookup[answer]
+        print("⚠️  القيمة غير صحيحة، الرجاء اختيار أحد الخيارات المعروضة.")
+
+
+# ───────────────────────── مرحلة المطابقة (محرك الاستدلال) ─────────────────────────
+def suggest_lenses(skin: str, hair: str, occasion: str) -> List[Suggestion]:
+    """
+    قلب النظام الخبير: يطبّق القواعد الشرطية على المدخلات
+    ويعيد قائمة توصيات مرتبة حسب الأفضلية.
+    """
+    suggestions: List[Suggestion] = []
+
+    # القاعدة 1 ─ الخيار الأفضل: حسب لون البشرة
+    if skin == "فاتحة":
+        suggestions.append(Suggestion("الأفضل", "عدسات خضراء",
+                                      "تبرز جمال البشرة الفاتحة"))
+    elif skin == "حنطية":
+        suggestions.append(Suggestion("الأفضل", "عدسات عسلية",
+                                      "تتناسق مع دفء البشرة الحنطية"))
+    else:  # داكنة
+        suggestions.append(Suggestion("الأفضل", "عدسات بنية فاتحة",
+                                      "تمنح البشرة الداكنة إشراقة وعمقاً"))
+
+    # القاعدة 2 ─ الخيار المناسب: حسب لون الشعر
+    if hair == "أسود":
+        suggestions.append(Suggestion("مناسب", "عدسات عسلية",
+                                      "تعطي مظهراً طبيعياً وناعماً"))
+    elif hair == "بني":
+        suggestions.append(Suggestion("مناسب", "عدسات بنية",
+                                      "تنسجم مع درجات الشعر البني"))
+    else:  # أشقر
+        suggestions.append(Suggestion("مناسب", "عدسات زرقاء",
+                                      "تتناغم مع الشعر الأشقر"))
+
+    # القاعدة 3 ─ الخيار الجريء: حسب نوع المناسبة
+    if occasion == "حفلة":
+        suggestions.append(Suggestion("جريء", "عدسات رمادية",
+                                      "لوك عصري ومختلف"))
+    elif occasion == "عمل":
+        suggestions.append(Suggestion("جريء", "عدسات عسلية فاتحة",
+                                      "لمسة مميزة مع الحفاظ على الطابع الرسمي"))
+    else:  # يومي
+        suggestions.append(Suggestion("جريء", "عدسات تركوازية",
+                                      "إطلالة مرحة مناسبة للاستخدام اليومي"))
+
+    return suggestions
+
+
+# ───────────────────────────────── مرحلة العرض ─────────────────────────────────
+RANK_ICONS = {"الأفضل": "⭐", "مناسب": "👍", "جريء": "🔥"}
+
+
+def display_results(suggestions: Sequence[Suggestion]) -> None:
+    """يعرض التوصيات مرتبة مع سبب كل اقتراح."""
+    print("\n💡 اقتراح العدسات المناسبة لك:\n")
+    for index, item in enumerate(suggestions, start=1):
+        icon = RANK_ICONS.get(item.rank, "•")
+        print(f"{index}. {icon} {item.rank} - {item.lens}")
+        print(f"   السبب: {item.reason}\n")
+
+
+def main() -> None:
+    print("🎯 مرحباً بك في نظام اقتراح العدسات الذكي\n")
+
+    skin = get_input("اختاري لون البشرة", SKIN_TONES)
+    hair = get_input("اختاري لون الشعر", HAIR_COLORS)
+    occasion = get_input("اختاري المناسبة", OCCASIONS)
+
+    display_results(suggest_lenses(skin, hair, occasion))
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (KeyboardInterrupt, EOFError):
+        print("\n\nتم إنهاء البرنامج. شكراً لاستخدامك النظام 💛")
